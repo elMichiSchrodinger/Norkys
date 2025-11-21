@@ -4,7 +4,7 @@ import Footer from '../components/footer';
 
 const Home = () => {
     
-    const image_path= '/src/assets/img/'
+    const image_path= '/img/'
     const images = [image_path+'promociones/AMOR_A_LA_BRASA.jpg',image_path+'promociones/promocion_1_4.webp', image_path+'promociones/cajita_infantil.jpg']
     const categories = [
     { id: 1, title: 'Promociones', img: image_path+'promociones/1_pollo_1_papas_1_ensalada_1.5_gaseosa.png' },

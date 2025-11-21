@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import menuBurger from '../assets/svg/menu-burger.svg';
 import logo from '../assets/img/norkys_logo.png';
+import logo_actual from '../assets/img/logo_actual.jpg'
 import lupa from '../assets/svg/lupa_buscador.svg';
 import usuario from '../assets/svg/logo_usuario.svg';
 import ShopCar from '../assets/svg/carrito_compras.svg?react';
@@ -82,10 +83,13 @@ const Navbar = () => {
                 </div>
 
                 {/* Lista de enlaces */}
-                <div className="flex flex-col p-4 space-y-4">
+                <div className="flex flex-col p-4 space-y-4 items-center">
+                    <img src={logo} alt="" className='w-32'/>
                     <a href="#" className="text-gray-700 hover:text-red-600 font-medium">Inicio</a>
                     <a href="#" className="text-gray-700 hover:text-red-600 font-medium">Promociones</a>
                     <a href="#" className="text-gray-700 hover:text-red-600 font-medium">Nuestra Carta</a>
+                    <button className='boton'>Ingresar</button>
+                    <button className='boton'>Registrarse</button>
                 </div>
             </div>
 
