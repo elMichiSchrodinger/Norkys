@@ -1,6 +1,8 @@
 import { useState } from 'react';
 // 1. IMPORTANTE: Importamos las herramientas de navegación
 import { Link, useNavigate } from 'react-router-dom';
+// 2. Importamos el contexto de autenticación
+import { useAuth } from '../context/AuthContext';
 
 import menuBurger from '../assets/svg/menu-burger.svg';
 import logo from '../assets/img/norkys_logo.png';
@@ -14,10 +16,13 @@ const Navbar = () => {
     const [query, setQuery] = useState('');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     
-    // 2. Inicializamos el hook de navegación
+    // 3. Obtenemos datos del usuario y función para salir del contexto
+    const { user, profile, signOut } = useAuth();
+    
+    // 4. Inicializamos el hook de navegación
     const navigate = useNavigate();
 
-    const handleSearch = (e) => {
+    const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         // Solo buscamos si el usuario escribió algo y no son solo espacios
         if (query.trim()) {
@@ -30,6 +35,17 @@ const Navbar = () => {
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
     };
+
+    const handleLogout = async () => {
+        await signOut();
+        toggleMenu(); // Cerramos el menú al salir
+    };
+
+    // Lógica para el nombre: Si existe perfil muestra nombre, sino "Mi cuenta"
+    // .split(' ')[0] sirve para mostrar solo el primer nombre y que no sea muy largo
+    const displayName = user && profile?.nombre 
+        ? profile.nombre.split(' ')[0] 
+        : 'Mi cuenta';
 
     return (
         <header>
@@ -63,9 +79,10 @@ const Navbar = () => {
                 </form>
 
                 <div className='flex flex-row justify-between items-center'>
-                    <div className='user flex md:mr-10 font-bold font-sans'>
-                        <p>Mi cuenta</p>
-                        <img src={usuario} alt="usuario" />
+                    <div className='user flex md:mr-10 font-bold font-sans items-center'>
+                        {/* AQUI MOSTRAMOS EL NOMBRE DINÁMICO */}
+                        <p className="">{displayName}</p>
+                        <img src={usuario} alt="usuario" className='size-10' />
                     </div>
                     <div className='shop-car flex flex-row justify-around items-center'>
                         <ShopCar className='icon-car' />
@@ -100,7 +117,7 @@ const Navbar = () => {
                     <Link 
                         to="/" 
                         onClick={toggleMenu} // Cierra el menú al hacer clic
-                        className="text-gray-700 hover:text-red-600 font-medium text-lg"
+                        className="text-gray-700 hover:text-yellow-600 font-medium text-lg"
                     >
                         Inicio
                     </Link>
@@ -108,19 +125,42 @@ const Navbar = () => {
                     <Link 
                         to="/menu" 
                         onClick={toggleMenu}
-                        className="text-gray-700 hover:text-red-600 font-medium text-lg"
+                        className="text-gray-700 hover:text-yellow-600 font-medium text-lg"
                     >
                         Nuestra Carta
                     </Link>
 
-                    {/* Estos botones aún no tienen ruta, así que los dejo como botones */}
+                    {/* SECCIÓN DE BOTONES DINÁMICOS */}
                     <div className='flex flex-col w-full gap-3 mt-4'>
-                        <button className='boton w-full bg-red-600 text-white py-2 rounded-full font-bold hover:bg-red-700 transition-colors'>
-                            Ingresar
-                        </button>
-                        <button className='boton w-full border border-red-600 text-red-600 py-2 rounded-full font-bold hover:bg-red-50 transition-colors'>
-                            Registrarse
-                        </button>
+                        
+                        {user ? (
+                            /* CASO 1: USUARIO LOGUEADO -> Botón Cerrar Sesión */
+                            <button 
+                                onClick={handleLogout}
+                                className='boton w-full text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'
+                            >
+                                Cerrar Sesión
+                            </button>
+                        ) : (
+                            /* CASO 2: NO LOGUEADO -> Botones Ingresar y Registrarse */
+                            <>
+                                <Link 
+                                    to="/login"
+                                    onClick={toggleMenu}
+                                    className='boton w-full text-center text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'
+                                >
+                                    Ingresar
+                                </Link>
+                                <Link 
+                                    to="/registro"
+                                    onClick={toggleMenu}
+                                    className='boton w-full text-center text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'
+                                >
+                                    Registrarse
+                                </Link>
+                            </>
+                        )}
+
                     </div>
                 </div>
             </div>

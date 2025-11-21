@@ -37,3 +37,19 @@ export const searchProductos = async (termino) => {
         p.descripcion.toLowerCase().includes(terminoLower)
     );
 };
+
+export const getProductoById = async (id: string | number) => {
+    try {
+        const { data, error } = await supabase
+            .from('producto')
+            .select('*')
+            .eq('productoid', id)
+            .single(); // .single() es importante porque esperamos solo uno
+
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error("Error obteniendo producto:", error);
+        return null;
+    }
+};
