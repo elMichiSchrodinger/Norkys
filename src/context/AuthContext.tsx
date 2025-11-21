@@ -3,7 +3,7 @@ import { supabase } from '../utils/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { User } from '@supabase/supabase-js';
 // Importamos la interfaz Profile desde tu archivo de modelos
-import type { Profile } from '../models/Profile';
+import type { Profile } from '../models/profile';
 
 interface AuthContextType {
     user: User | null;
@@ -16,7 +16,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
-    // Inicializamos el estado con el tipo Profile o null
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
@@ -25,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         let mounted = true;
 
+        // --- FUNCIÓN PRINCIPAL DE CARGA ---
         const checkUser = async () => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
@@ -45,6 +45,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         checkUser();
 
+        // --- SALVAVIDAS (CRUCIAL) ---
+        // Si por alguna razón (internet lento, error de supabase) la carga no termina en 3 seg,
+        // forzamos a que termine para mostrar la app y no una pantalla blanca.
+        const safetyTimer = setTimeout(() => {
+            if (mounted && loading) {
+                console.warn("⚠️ Tiempo de carga excedido. Forzando apertura de la app.");
+                setLoading(false);
+            }
+        }, 3000);
+
         const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session?.user) {
                 setUser(session.user);
@@ -52,22 +62,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } else {
                 setUser(null);
                 setProfile(null);
-                setLoading(false);
             }
+            // Aseguramos quitar el loading al cambiar el estado de auth
+            setLoading(false);
         });
 
         return () => {
             mounted = false;
+            clearTimeout(safetyTimer); // Limpiamos el timer al salir
             authListener.subscription.unsubscribe();
         };
     }, []);
 
-    // Lógica de protección: Redirigir si faltan datos
+    // Redirección automática si faltan datos (Solo si ya cargó)
     useEffect(() => {
         if (!loading && user && profile) {
-            // Si faltan datos (teléfono o dirección) y NO estamos ya en la página de completar perfil
             if ((!profile.telefono || !profile.direccion) && location.pathname !== '/completar-perfil') {
-                console.log("Faltan datos, redirigiendo...");
                 navigate('/completar-perfil');
             }
         }
@@ -81,14 +91,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 .eq('id', currentUser.id)
                 .maybeSingle();
             
-            if (error) throw error;
-
             if (data) {
-                // Supabase devuelve 'any', así que lo forzamos al tipo Profile
                 setProfile(data as Profile);
-            } else {
-                // SALVAVIDAS: Crear perfil si no existe (por si falló el trigger)
-                const { data: newProfile, error: createError } = await supabase
+            } else if (!error) {
+                // Crear perfil si no existe (Salvavidas por si falló el trigger)
+                const { data: newProfile } = await supabase
                     .from('profile')
                     .insert([{
                         id: currentUser.id,
@@ -98,12 +105,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     .select()
                     .single();
                 
-                if (!createError && newProfile) {
-                    setProfile(newProfile as Profile);
-                }
+                if (newProfile) setProfile(newProfile as Profile);
             }
         } catch (error) {
-            console.error("Error cargando perfil:", error);
+            console.error("Error perfil:", error);
         }
     };
 
@@ -117,8 +122,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return (
         <AuthContext.Provider value={{ user, profile, signOut, loading }}>
             {loading ? (
-                <div className="h-screen flex justify-center items-center">
-                    <p className="text-gray-500">Cargando...</p>
+                // Pantalla de carga elegante
+                <div className="h-screen flex flex-col justify-center items-center bg-gray-50">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+                    <p className="text-gray-500 font-semibold animate-pulse">Cargando Norky's...</p>
                 </div>
             ) : (
                 children
@@ -127,7 +134,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
-// Hook personalizado
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (context === undefined) {
