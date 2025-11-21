@@ -1,12 +1,11 @@
 import { useState } from 'react';
-// 1. IMPORTANTE: Importamos las herramientas de navegación
 import { Link, useNavigate } from 'react-router-dom';
-// 2. Importamos el contexto de autenticación
 import { useAuth } from '../context/AuthContext';
+// 1. Importar el hook del carrito
+import { useCart } from '../context/CartContext'; 
 
 import menuBurger from '../assets/svg/menu-burger.svg';
 import logo from '../assets/img/norkys_logo.png';
-// import logo_actual from '../assets/img/logo_actual.jpg' // Descomenta si lo usas
 import lupa from '../assets/svg/lupa_buscador.svg';
 import usuario from '../assets/svg/logo_usuario.svg';
 import ShopCar from '../assets/svg/carrito_compras.svg?react';
@@ -16,19 +15,18 @@ const Navbar = () => {
     const [query, setQuery] = useState('');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     
-    // 3. Obtenemos datos del usuario y función para salir del contexto
     const { user, profile, signOut } = useAuth();
     
-    // 4. Inicializamos el hook de navegación
+    // 2. Obtener el número total de items del contexto del carrito
+    const { totalItems } = useCart(); 
+    
     const navigate = useNavigate();
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        // Solo buscamos si el usuario escribió algo y no son solo espacios
         if (query.trim()) {
-            console.log('Redirigiendo a:', query);
-            navigate(`/busqueda/${query}`); // <-- ESTO TE LLEVA A LA PÁGINA DE RESULTADOS
-            setQuery(''); // Opcional: Limpia la barra después de buscar
+            navigate(`/busqueda/${query}`); 
+            setQuery(''); 
         }
     };
 
@@ -38,11 +36,9 @@ const Navbar = () => {
 
     const handleLogout = async () => {
         await signOut();
-        toggleMenu(); // Cerramos el menú al salir
+        toggleMenu(); 
     };
 
-    // Lógica para el nombre: Si existe perfil muestra nombre, sino "Mi cuenta"
-    // .split(' ')[0] sirve para mostrar solo el primer nombre y que no sea muy largo
     const displayName = user && profile?.nombre 
         ? profile.nombre.split(' ')[0] 
         : 'Mi cuenta';
@@ -55,7 +51,6 @@ const Navbar = () => {
                         <img src={menuBurger} className='bar-menu' alt="menú" />
                     </button>
                     
-                    {/* Hacemos que el logo te lleve al inicio */}
                     <Link to="/" className='cursor-pointer'>
                         <img src={logo} alt="logo" className='logo' />
                     </Link>
@@ -69,24 +64,27 @@ const Navbar = () => {
                         placeholder='¿Cuál es su antojo?'
                         className='search mr-6'
                     />
-                    <button
-                        type="submit"
-                        aria-label='Buscar'
-                        className='input mr-1'
-                    >
+                    <button type="submit" aria-label='Buscar' className='input mr-1'>
                         <img src={lupa} alt="buscar" className='lupa size-6' />
                     </button>
                 </form>
 
                 <div className='flex flex-row justify-between items-center'>
-                    <div className='user flex md:mr-10 font-bold font-sans items-center'>
-                        {/* AQUI MOSTRAMOS EL NOMBRE DINÁMICO */}
-                        <p className="">{displayName}</p>
-                        <img src={usuario} alt="usuario" className='size-10' />
+                    <div className='user flex md:mr-10 font-bold font-sans items-center gap-2'>
+                        <p className="truncate max-w-[100px]">{displayName}</p>
+                        <img src={usuario} alt="usuario" className='size-8' />
                     </div>
-                    <div className='shop-car flex flex-row justify-around items-center'>
+                    
+                    {/* 3. CARRITO DINÁMICO */}
+                    <div 
+                        className='shop-car flex flex-row justify-around items-center cursor-pointer hover:opacity-90 transition-opacity'
+                        onClick={() => navigate('/carrito')} // Redirige al hacer clic
+                    >
                         <ShopCar className='icon-car' />
-                        <p className='font-bold'>01</p>
+                        {/* Si es mayor a 99 muestra 99+, si no muestra el número con 2 dígitos (01, 05, 10) */}
+                        <p className='font-bold'>
+                            {totalItems > 99 ? '99+' : totalItems.toString().padStart(2, '0')}
+                        </p>
                     </div>
                 </div>
             </nav>
@@ -97,74 +95,29 @@ const Navbar = () => {
                 transform transition-transform duration-300 ease-in-out
                 ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
-                
-                {/* Cabecera del menú (Botón cerrar) */}
                 <div className="flex justify-between items-center p-4 border-b bg-gray-50">
                     <h2 className="font-bold text-lg text-gray-700">Menú</h2>
-                    <button 
-                        onClick={toggleMenu} 
-                        className="text-gray-500 hover:text-red-500 font-bold text-2xl focus:outline-none"
-                    >
-                        &times;
-                    </button>
+                    <button onClick={toggleMenu} className="text-gray-500 hover:text-red-500 font-bold text-2xl focus:outline-none">&times;</button>
                 </div>
-
-                {/* Lista de enlaces */}
                 <div className="flex flex-col p-4 space-y-4 items-center">
                     <img src={logo} alt="" className='w-32 mb-4'/>
                     
-                    {/* Usamos Link en lugar de <a> para no recargar la página */}
-                    <Link 
-                        to="/" 
-                        onClick={toggleMenu} // Cierra el menú al hacer clic
-                        className="text-gray-700 hover:text-yellow-600 font-medium text-lg"
-                    >
-                        Inicio
-                    </Link>
+                    <Link to="/" onClick={toggleMenu} className="text-gray-700 hover:text-yellow-600 font-medium text-lg">Inicio</Link>
+                    <Link to="/menu" onClick={toggleMenu} className="text-gray-700 hover:text-yellow-600 font-medium text-lg">Nuestra Carta</Link>
                     
-                    <Link 
-                        to="/menu" 
-                        onClick={toggleMenu}
-                        className="text-gray-700 hover:text-yellow-600 font-medium text-lg"
-                    >
-                        Nuestra Carta
-                    </Link>
-
-                    {/* SECCIÓN DE BOTONES DINÁMICOS */}
                     <div className='flex flex-col w-full gap-3 mt-4'>
-                        
                         {user ? (
-                            /* CASO 1: USUARIO LOGUEADO -> Botón Cerrar Sesión */
-                            <button 
-                                onClick={handleLogout}
-                                className='boton w-full text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'
-                            >
-                                Cerrar Sesión
-                            </button>
+                            <button onClick={handleLogout} className='boton w-full text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'>Cerrar Sesión</button>
                         ) : (
-                            /* CASO 2: NO LOGUEADO -> Botones Ingresar y Registrarse */
                             <>
-                                <Link 
-                                    to="/login"
-                                    onClick={toggleMenu}
-                                    className='boton w-full text-center text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'
-                                >
-                                    Ingresar
-                                </Link>
-                                <Link 
-                                    to="/registro"
-                                    onClick={toggleMenu}
-                                    className='boton w-full text-center text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'
-                                >
-                                    Registrarse
-                                </Link>
+                                <Link to="/login" onClick={toggleMenu} className='boton w-full text-center text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'>Ingresar</Link>
+                                <Link to="/registro" onClick={toggleMenu} className='boton w-full text-center text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'>Registrarse</Link>
                             </>
                         )}
-
                     </div>
                 </div>
             </div>
-
+            {isMenuOpen && <div className="fixed inset-0 bg-opacity-50 z-40" onClick={toggleMenu}></div>}
         </header>
     );
 }
