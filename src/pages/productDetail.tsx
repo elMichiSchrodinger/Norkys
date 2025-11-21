@@ -62,13 +62,13 @@ const ProductDetail = () => {
 
                             <div className="flex flex-col sm:flex-row items-center gap-4 border-t border-gray-100 pt-8">
                                 <div className="flex items-center border-2 border-gray-200 rounded-full overflow-hidden">
-                                    <button onClick={handleDecrement} className="px-4 py-2 hover:bg-gray-100 font-bold text-xl">-</button>
-                                    <span className="px-4 py-2 font-black text-xl w-12 text-center">{cantidad}</span>
-                                    <button onClick={handleIncrement} className="px-4 py-2 hover:bg-gray-100 font-bold text-xl">+</button>
+                                    <button onClick={handleDecrement} className="p-4 hover:bg-gray-100 font-bold text-xl">-</button>
+                                    <span className="px-4 py-2 font-black text-xl w-6 text-center">{cantidad}</span>
+                                    <button onClick={handleIncrement} className="p-4 hover:bg-gray-100 font-bold text-xl">+</button>
                                 </div>
                                 <button 
                                     onClick={handleAddToCart}
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white text-lg font-black py-3 px-8 rounded-full shadow-lg transition-transform active:scale-95"
+                                    className="w-1/2 bg-green-600 hover:bg-green-700 text-white text-lg font-black py-3 px-4 rounded-full shadow-lg transition-transform active:scale-95 mx-auto"
                                 >
                                     AGREGAR S/ {(producto.precio * cantidad).toFixed(2)}
                                 </button>
