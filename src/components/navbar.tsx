@@ -107,7 +107,7 @@ const Navbar = () => {
                     
                     <div className='flex flex-col w-full gap-3 mt-4'>
                         {user ? (
-                            <button onClick={handleLogout} className='boton w-full text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'>Cerrar Sesión</button>
+                            <Link to='/' onClick={handleLogout} className='boton w-full text-center text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'>Cerrar Sesión</Link>
                         ) : (
                             <>
                                 <Link to="/login" onClick={toggleMenu} className='boton w-full text-center text-white py-2 rounded-full font-bold hover:bg-yellow-50 transition-colors'>Ingresar</Link>
