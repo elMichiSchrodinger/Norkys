@@ -4,7 +4,7 @@ import './index.css'
 import App from './App.tsx'
 
 import { BrowserRouter } from 'react-router-dom'
-//localStorage.clear(); 
+localStorage.clear(); 
 
 createRoot(document.getElementById('root')!).render(
   

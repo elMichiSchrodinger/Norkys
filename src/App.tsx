@@ -1,7 +1,8 @@
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import { CartProvider } from './context/CartContext'; // 1. IMPORTAR
+import { CartProvider } from './context/CartContext';
 
+// Importamos las páginas (Asegúrate de que coincidan con los nombres de archivo reales)
 import Home from './pages/home';
 import Productos from './pages/productos';
 import Busqueda from './pages/busqueda';
@@ -9,12 +10,20 @@ import ProductDetail from './pages/productDetail';
 import Login from './pages/login';
 import Registro from './pages/registro';
 import CompletarPerfil from './pages/completarPerfil';
-import CarritoPage from './pages/carritoPage'; // 2. Importaremos la nueva página
+import CarritoPage from './pages/carritoPage';
+
+// Importamos el Debugger para solucionar el problema de sesión
+import DebugSupabase from './components/DebugSupabase';
+localStorage.clear()
 
 function App() {
   return (
     <AuthProvider>
-      <CartProvider> {/* 3. ENVOLVER AQUI */}
+      <CartProvider>
+        
+        {/* Componente de Diagnóstico (Bórralo cuando ya todo funcione perfecto) */}
+        {/*<DebugSupabase />*/}
+
         <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/menu" element={<Productos />} />

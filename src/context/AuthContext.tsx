@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase } from '../utils/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { User } from '@supabase/supabase-js';
-// Importamos la interfaz Profile desde tu archivo de modelos
 import type { Profile } from '../models/profile';
 
 interface AuthContextType {
@@ -10,6 +9,7 @@ interface AuthContextType {
     profile: Profile | null;
     signOut: () => Promise<void>;
     loading: boolean;
+    authError: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,17 +18,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
+    const [authError, setAuthError] = useState<string | null>(null);
+    
     const navigate = useNavigate();
     const location = useLocation();
 
     useEffect(() => {
         let mounted = true;
 
-        // --- FUNCIÓN PRINCIPAL DE CARGA ---
         const checkUser = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                setAuthError(null);
+                const { data: { session }, error } = await supabase.auth.getSession();
                 
+                if (error) throw error;
+
                 if (session?.user) {
                     setUser(session.user);
                     await fetchProfile(session.user);
@@ -36,8 +40,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     setUser(null);
                     setProfile(null);
                 }
-            } catch (error) {
-                console.error("Error verificación sesión:", error);
+            } catch (error: any) {
+                console.error("🚨 Error de sesión:", error);
+                setAuthError(error.message);
+                
+                // Auto-reparación si el token está mal
+                if (error.message?.includes("JWT") || error.status === 400) {
+                    await signOut(); // Usamos nuestra función blindada
+                }
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -45,36 +55,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         checkUser();
 
-        // --- SALVAVIDAS (CRUCIAL) ---
-        // Si por alguna razón (internet lento, error de supabase) la carga no termina en 3 seg,
-        // forzamos a que termine para mostrar la app y no una pantalla blanca.
         const safetyTimer = setTimeout(() => {
             if (mounted && loading) {
-                console.warn("⚠️ Tiempo de carga excedido. Forzando apertura de la app.");
+                console.warn("⚠️ Tiempo de espera agotado. Forzando carga.");
                 setLoading(false);
             }
         }, 3000);
 
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (session?.user) {
                 setUser(session.user);
                 await fetchProfile(session.user);
-            } else {
+            } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setProfile(null);
             }
-            // Aseguramos quitar el loading al cambiar el estado de auth
             setLoading(false);
         });
 
         return () => {
             mounted = false;
-            clearTimeout(safetyTimer); // Limpiamos el timer al salir
+            clearTimeout(safetyTimer);
             authListener.subscription.unsubscribe();
         };
     }, []);
 
-    // Redirección automática si faltan datos (Solo si ya cargó)
+    // Redirección a completar perfil
     useEffect(() => {
         if (!loading && user && profile) {
             if ((!profile.telefono || !profile.direccion) && location.pathname !== '/completar-perfil') {
@@ -93,43 +99,69 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             
             if (data) {
                 setProfile(data as Profile);
-            } else if (!error) {
-                // Crear perfil si no existe (Salvavidas por si falló el trigger)
-                const { data: newProfile } = await supabase
-                    .from('profile')
-                    .insert([{
-                        id: currentUser.id,
-                        nombre: currentUser.user_metadata?.full_name || 'Usuario',
-                        rol: 'usuario'
-                    }])
-                    .select()
-                    .single();
-                
-                if (newProfile) setProfile(newProfile as Profile);
+            } else {
+                // Si no hay perfil, intentamos usar los datos de Google/Auth temporalmente
+                // mientras se crea el perfil en background o en el 'salvavidas'
+                const tempProfile: Profile = {
+                    id: currentUser.id,
+                    nombre: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Usuario',
+                    rol: 'usuario',
+                    telefono: null,
+                    direccion: null
+                };
+                setProfile(tempProfile);
+
+                // Intentamos crearlo si no existe
+                if (!error) {
+                    await supabase.from('profile').upsert(tempProfile);
+                }
             }
         } catch (error) {
             console.error("Error perfil:", error);
         }
     };
 
+    // --- FUNCIÓN SIGNOUT BLINDADA ---
     const signOut = async () => {
-        await supabase.auth.signOut();
-        setUser(null);
-        setProfile(null);
-        navigate('/login');
+        try {
+            // Intentamos cerrar en el servidor
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error("Error al cerrar sesión en Supabase (ignorando):", error);
+        } finally {
+            // PASE LO QUE PASE, limpiamos el estado local y redirigimos
+            setUser(null);
+            setProfile(null);
+            setAuthError(null);
+            // Borramos local storage por si acaso
+            localStorage.removeItem('sb-' + import.meta.env.VITE_SUPABASE_URL?.split('//')[1].split('.')[0] + '-auth-token');
+            navigate('/login');
+        }
     };
 
+    if (loading) {
+        return (
+            <div className="h-screen flex flex-col justify-center items-center bg-gray-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+                <p className="text-gray-500 font-semibold animate-pulse">Cargando Norky's...</p>
+            </div>
+        );
+    }
+
+    if (authError) {
+        return (
+            <div className="h-screen flex flex-col justify-center items-center bg-red-50 p-4">
+                <h1 className="text-xl font-bold text-red-700 mb-2">Sesión Expirada</h1>
+                <button onClick={signOut} className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
+                    Reiniciar Aplicación
+                </button>
+            </div>
+        );
+    }
+
     return (
-        <AuthContext.Provider value={{ user, profile, signOut, loading }}>
-            {loading ? (
-                // Pantalla de carga elegante
-                <div className="h-screen flex flex-col justify-center items-center bg-gray-50">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
-                    <p className="text-gray-500 font-semibold animate-pulse">Cargando Norky's...</p>
-                </div>
-            ) : (
-                children
-            )}
+        <AuthContext.Provider value={{ user, profile, signOut, loading, authError }}>
+            {children}
         </AuthContext.Provider>
     );
 };
